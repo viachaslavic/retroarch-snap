@@ -14,42 +14,37 @@ license: GPL-3.0
 icon: snap/gui/retroarch.svg
 confinement: strict
 grade: stable
-architectures:
-- build-on: [amd64]
-  build-for: [amd64]
-- build-on: [armhf]
-  build-for: [armhf]
-- build-on: [arm64]
-  build-for: [arm64]
-- build-on: [ppc64el]
-  build-for: [ppc64el]
-base: core22
+platforms:
+  amd64:
+  armhf:
+  arm64:
+  ppc64el:
+base: core24
 
-plugs:
-  graphics-core22:
-    interface: content
-    target: $SNAP/graphics
-    default-provider: mesa-core22
-  shared-memory:  # Required by some cores such as dolphin-libretro and swanstation-libretro
-    private: true
+#plugs:
+#  graphics-core22:
+#    interface: content
+#    target: $SNAP/graphics
+#    default-provider: mesa-core22
+#  shared-memory:  # Required by some cores such as dolphin-libretro and swanstation-libretro
+#    private: true
 
-layout:
-  /usr/share/libdrm:
-    bind: $SNAP/graphics/libdrm
-  /usr/share/drirc.d:
-    symlink: $SNAP/graphics/drirc.d
-  /usr/share/X11/XErrorDB:
-    symlink: $SNAP/graphics/X11/XErrorDB
-  /usr/share/X11/locale:
-    symlink: $SNAP/graphics/X11/locale
+#layout:
+#  /usr/share/libdrm:
+#    bind: $SNAP/graphics/libdrm
+#  /usr/share/drirc.d:
+#    symlink: $SNAP/graphics/drirc.d
+#  /usr/share/X11/XErrorDB:
+#    symlink: $SNAP/graphics/X11/XErrorDB
+#  /usr/share/X11/locale:
+#    symlink: $SNAP/graphics/X11/locale
 
 apps:
   retroarch:
-#    extensions:
-#      - kde-neon
+    extensions: [gnome]
     command-chain:
-    - bin/desktop-launch
-    - bin/graphics-core22-wrapper
+#    - bin/desktop-launch
+#    - bin/graphics-core22-wrapper
     - bin/retroarch.wrapper
     command: usr/local/bin/retroarch
     environment: &_environment
@@ -77,8 +72,8 @@ apps:
   daemon:
     command-chain:
     - bin/daemon-start.sh
-    - bin/desktop-launch
-    - bin/graphics-core22-wrapper
+#    - bin/desktop-launch
+#    - bin/graphics-core22-wrapper
     - bin/retroarch.wrapper
     command: usr/local/bin/retroarch -f -v
     daemon: simple
@@ -109,7 +104,7 @@ apps:
 parts:
   retroarch-wrapper:
     plugin: dump
-    after: [desktop-qt5]
+#    after: [desktop-qt5]
     source: scripts
     stage-packages:
       - inotify-tools
@@ -117,6 +112,9 @@ parts:
    plugin: autotools
    source-type: git
    source: https://github.com/libretro/RetroArch.git
+   #source-branch: steamdeck  # when need to build from a non-default branch
+   #source-tag: v1.20.0
+   #source-commit: 864ad02177e5e39c9951082e127efcc6a693b1e5  # Requires the full 40-character SHA-1
    after: [retroarch-wrapper]
    build-environment:
      - MAKEFLAGS: HAVE_BUILTINZLIB=0 HAVE_ZLIB_COMMON=1
@@ -135,7 +133,7 @@ parts:
      - --disable-vg
      - --disable-v4l2
      - --disable-xinerama
-     - --disable-qt
+     - --enable-qt
      - --enable-vulkan
      - --enable-discord
      - --enable-dbus
@@ -144,17 +142,18 @@ parts:
      - fonts-dejavu-core
      - freeglut3-dev
      - libasound2
-     - libavcodec58
-     - libavformat58
-     - libavutil56
+     - libavcodec60
+     - libavformat60
+     - libavutil58
      - libfreetype6
      - libgbm1
      - libjack-jackd2-0
+     #- libpipewire-0.3-dev
      - libminizip1
      - libopenal1
      - libpulse0
-     - libswresample3
-     - libswscale5
+     - libswresample4
+     - libswscale7
      - libudev1
      - libusb-1.0-0
      - libxrandr-dev
@@ -163,6 +162,8 @@ parts:
      - libxkbcommon0
      - libxv1
      - zlib1g
+     - qt6-base-dev
+     - qt6-wayland
 #     - qtbase5-dev
 #     - qtwayland5
 #     - libqt5waylandclient5
@@ -178,7 +179,7 @@ parts:
      - libsdl-net1.2
      - libbluetooth3
      - libxi6
-     - libaio1
+     - libaio1t64
 #     - libdecor-0-0
      - libdecor-0-plugin-1-cairo
      - libsdl2-2.0-0
@@ -231,8 +232,8 @@ parts:
     source: https://github.com/libretro/RetroArch.git
     source-type: git
     override-build: |
-     cd libretro-common/audio/dsp_filters/ && ./configure && make && make install DESTDIR=$CRAFT_PART_INSTALL/.config/filters/audio INSTALLDIR=
-     cd ../../../gfx/video_filters/ && ./configure && make && make install DESTDIR=$CRAFT_PART_INSTALL/.config/filters/video INSTALLDIR=
+     pushd libretro-common/audio/dsp_filters/ && ./configure && make && make install DESTDIR=$CRAFT_PART_INSTALL/.config/filters/audio INSTALLDIR= && popd
+     pushd gfx/video_filters/ && ./configure && make && make install DESTDIR=$CRAFT_PART_INSTALL/.config/filters/video INSTALLDIR= && popd
     stage:
       - .config/filters/video
       - .config/filters/audio
@@ -331,36 +332,36 @@ parts:
   # check the source for updates and copy the changes.
   #    https://github.com/ubuntu/snapcraft-desktop-helpers/blob/master/snapcraft.yaml
   #
-  desktop-qt5:
-    source: https://github.com/ubuntu/snapcraft-desktop-helpers.git
-    source-subdir: qt
-    plugin: make
-    make-parameters: ["FLAVOR=qt5"]
-    build-packages:
-      - build-essential
-      - qtbase5-dev
-      - dpkg-dev
-    stage-packages:
-      - libxkbcommon0
-      - fonts-ubuntu
-      - dmz-cursor-theme
-      - light-themes
-      - adwaita-icon-theme
-      - gnome-themes-standard
-      - shared-mime-info
-      - libqt5gui5
-      - libgtk2.0-0
-      - libgdk-pixbuf2.0-0
-      - libqt5svg5  # for loading icon themes which are svg
-      - locales-all
-      - xdg-user-dirs
-      - fcitx-frontend-qt5
-  graphics-core22:
-    after: [retroarch]
-    source: https://github.com/canonical/gpu-snap.git
-    plugin: dump
-    override-prime: |
-      craftctl default
-      ${CRAFT_PART_SRC}/bin/graphics-core22-cleanup mesa-core22 nvidia-core22
-    prime:
-    - bin/graphics-core22-wrapper
+#  desktop-qt5:
+#    source: https://github.com/ubuntu/snapcraft-desktop-helpers.git
+#    source-subdir: qt
+#    plugin: make
+#    make-parameters: ["FLAVOR=qt5"]
+#    build-packages:
+#      - build-essential
+#      - qtbase5-dev
+#      - dpkg-dev
+#    stage-packages:
+#      - libxkbcommon0
+#      - fonts-ubuntu
+#      - dmz-cursor-theme
+#      - light-themes
+#      - adwaita-icon-theme
+#      - gnome-themes-standard
+#      - shared-mime-info
+#      - libqt5gui5
+#      - libgtk2.0-0
+#      - libgdk-pixbuf2.0-0
+#      - libqt5svg5  # for loading icon themes which are svg
+#      - locales-all
+#      - xdg-user-dirs
+#      - fcitx-frontend-qt5
+#  graphics-core22:
+#    after: [retroarch]
+#    source: https://github.com/canonical/gpu-snap.git
+#    plugin: dump
+#    override-prime: |
+#      craftctl default
+#      ${CRAFT_PART_SRC}/bin/graphics-core22-cleanup mesa-core22 nvidia-core22
+#    prime:
+#    - bin/graphics-core22-wrapper
